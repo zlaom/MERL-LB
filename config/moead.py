@@ -113,20 +113,11 @@ def parse_args():
     parser.add_argument("--observe_type", default=4, type=int)
 
     # genetic
-    parser.add_argument("--population_size", default=50, type=int)
     parser.add_argument("--moead_n", default=50, type=int)
     parser.add_argument("--moead_m", default=2, type=int)
     parser.add_argument("--moead_t", default=5, type=int)
-    parser.add_argument("--ga_mutate_scale", default=0.05, type=float)
-    parser.add_argument("--ga_choice", default="generate", type=str)
-    parser.add_argument("--ga_fitness_num", default=2, type=int)
-    parser.add_argument("--ga_fitness_wight", default=[0.4, 0.6], type=list)
-    parser.add_argument(
-        "--ga_fitness_type",
-        default="double",
-        choices=["std", "runtime", "double"],
-        type=str,
-    )
+    parser.add_argument("--mutate_rate", default=0.25, type=float)
+    parser.add_argument("--mutate_scale", default=0.05, type=float)
 
     args, unknown = parser.parse_known_args()
     return args
