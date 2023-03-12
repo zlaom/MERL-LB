@@ -202,8 +202,8 @@ class MOEAD:
 
     def set_weight(self):
         # 划分权重
-        self.W = np.zeros((50, 2))
-        W = np.linspace(0, 1, 50)
+        self.W = np.zeros((self.N, self.M))
+        W = np.linspace(0, 1, self.N)
         self.W[:, 0] = W
         self.W[:, 1] = 1 - W
 
@@ -296,6 +296,9 @@ class MOEAD:
         mutil_process = []
         for id1 in range(self.N):
             for id2, individual in enumerate(all_evaluate_list[id1]):
+                # 跳过已经评估过的个体 加速训练
+                if individual.train_fitness is not None:
+                    continue
                 one_process = pool.apply_async(
                     run_individual_in_env,
                     args=(
@@ -337,43 +340,59 @@ class MOEAD:
                     < evaluate_list[best_i2].train_fitness[mi]
                 ):
                     best_i = best_i1
-            
-            # 没有找到更好的解则跳过更新
-            if best_i == 0:
-                continue
+
             best_individual = evaluate_list[best_i]
 
+            # # 没有找到更好的解则跳过更新
+            # if best_i == 0:
+            #     continue
+            # self.population[pi] = best_individual
+
+            # 更新邻居
+            for nj in self.B[pi]:
+                nei_individual = self.population[nj]
+                nei_tchebycheff = np.max(np.array(nei_individual.train_fitness) * self.W[pi])
+                cur_tchebycheff = np.max(np.array(best_individual.train_fitness) * self.W[pi])
+                if cur_tchebycheff < nei_tchebycheff:
+                    self.population[nj] = best_individual
+                    elite_change_num += 1
+
             # 更新EP
-            remove_list = []
-            n = 0
-            for individual in self.EP:
-                if np.all(best_individual.train_fitness < individual.train_fitness):
-                    remove_list.append(individual)
-                elif np.all(best_individual.train_fitness > individual.train_fitness):
-                    n += 1
-                if n != 0:
-                    break
-            if n == 0:
-                for individual in remove_list:
-                    self.EP.remove(individual)
-                self.EP.append(best_individual)
-                elite_change_num += 1
+            if abs(tchebycheff_list[best_i2] - tchebycheff_list[0]) > 1:
+                remove_list = []
+                n = 0
+                for individual in self.EP:
+                    if np.all(best_individual.train_fitness < individual.train_fitness):
+                        remove_list.append(individual)
+                    elif np.all(best_individual.train_fitness > individual.train_fitness):
+                        n += 1
+                    if n != 0:
+                        break
+                if n == 0:
+                    for individual in remove_list:
+                        self.EP.remove(individual)
+                    self.EP.append(best_individual)
+
         # 保存前沿
         self.save_population(self.EP, "elite")
+        self.save_population(self.population, "population")
 
         self.generation += 1
         self.seq_index = (self.seq_index + 1) % self.seq_num
         elite_fitness_list = []
         for individual in self.EP:
             elite_fitness_list.append(individual.train_fitness)
-        return elite_change_num, elite_fitness_list
+        population_fitness_list = []
+        for individual in self.population:
+            population_fitness_list.append(individual.train_fitness)
+        return elite_change_num, elite_fitness_list, population_fitness_list
 
 
 if __name__ == "__main__":
     args = parse_args()
     args.method = "moead"
     args.job_seq_num = 1
-    args.tag = "run01"
+    args.tag = "run02"
 
     save_dir = os.path.join(
         args.save_path,
@@ -393,14 +412,13 @@ if __name__ == "__main__":
 
     moead = MOEAD(args)
     moead.setup_seed()
-    moead.generate_ancestor()
 
     fitness_list = []
 
     while True:
         print("=" * 100)
         print(f"evolve generation {moead.generation}")
-        elite_change_num, elite_fitness_list = moead.evolve()
+        elite_change_num, elite_fitness_list, population_fitness_list = moead.evolve()
 
         # log to tensorbord
         writer.add_scalar("Elite change num", elite_change_num, moead.generation)
@@ -417,9 +435,26 @@ if __name__ == "__main__":
         plt.ylim((200, 600))
         plt.xlabel("balance")
         plt.ylabel("duration")
-        plt.title("Target distribution")
+        plt.title("Elite Target Distribution")
         plt.legend()
-        writer.add_figure("Target distribution", figure, moead.generation)
+        writer.add_figure("Elite Target Distribution", figure, moead.generation)
+        plt.close()
+
+        population_fitness_list = np.array(population_fitness_list)
+        y = population_fitness_list[:, 0]
+        x = population_fitness_list[:, 1]
+        figure = plt.figure(figsize=(8, 8), dpi=100)
+        plt.scatter(x, y, label="train")
+        plt.scatter(16.2658, 534.9209, label="lc")
+        plt.scatter(66.8868, 349.5121, label="lg")
+        plt.scatter(17.0905, 351.4006, label="wsga")
+        plt.xlim((0, 250))
+        plt.ylim((200, 600))
+        plt.xlabel("balance")
+        plt.ylabel("duration")
+        plt.title("Population Target Distribution")
+        plt.legend()
+        writer.add_figure("Population Target Distribution", figure, moead.generation)
         plt.close()
 
         max_elite_fitness = np.max(elite_fitness_list, axis=0)
