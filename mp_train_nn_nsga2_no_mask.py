@@ -116,7 +116,8 @@ class Agent(nn.Module):
             dim=-1,
         )  # B*n*dim2
 
-        action = self.job_actor.predict(job_input, action_mask)
+        # action = self.job_actor.predict(job_input, action_mask)
+        action = self.job_actor.predict(job_input)
         return action
 
     def show(self):
@@ -352,48 +353,11 @@ class GA:
         return selection
 
     # 产生子代
-    # 改进子代生成方式
     def generate_children(self):
         children_population = []
-        # 对精英排序
-        fitness_list = []
-        for item in self.elitism_population:
-            fitness_list.append(item.train_fitness)
-        fitness_list = np.array(fitness_list)
-        fitness0_index = np.argsort(fitness_list[:, 0])
-        fitness1_index = np.argsort(fitness_list[:, 1])
-        a = np.arange(0, len(fitness_list))
-        neighbor = []
-        for i in range(len(fitness_list)):
-            distance = abs(i - a)
-            nei = np.argsort(distance)
-            neighbor.append(nei[1 : 5 + 1])
-
-        self.exploration_rate = 1
-        if self.generation < 100:
-            self.exploration_rate = 0.5 + 0.5 * (1 - self.generation / 100)
-        elif self.generation < 2000:
-            self.exploration_rate = 0.1 + 0.4 * (1 - self.generation / 2000)
-        else:
-            self.exploration_rate = 0.1
-
-        # 1000 探索
-        # 5000 待收缩
-        #
         while len(children_population) < self.c_size:
             # p1, p2 = self.roulette_wheel_selection(2)
-            if random.random() < self.exploration_rate:
-                p1, p2 = self.random_select_parent(2)
-            else:
-                rd_index1 = random.randint(0, len(fitness0_index) - 1)
-                rd_index2 = neighbor[rd_index1][random.randint(0, 5 - 1)]
-                if random.random() < 0.5:
-                    p1 = self.elitism_population[fitness0_index[rd_index1]]
-                    p2 = self.elitism_population[fitness0_index[rd_index2]]
-                else:
-                    p1 = self.elitism_population[fitness1_index[rd_index1]]
-                    p2 = self.elitism_population[fitness1_index[rd_index2]]
-
+            p1, p2 = self.random_select_parent(2)
             c1_genes, c2_genes = p1.job_genes.copy(), p2.job_genes.copy()
 
             self.crossover(c1_genes, c2_genes)
@@ -442,7 +406,7 @@ class GA:
         population_num = self.args.ga_parent_size + self.args.ga_children_size
         pool_num = min(cpu_count(), population_num)
         print(f"use {pool_num} cup core")
-        pool = Pool(pool_num)
+        pool = Pool(10)
 
         mutil_process = []
         for id, individual in enumerate(self.population):
@@ -577,7 +541,7 @@ class GA:
 
 if __name__ == "__main__":
     args = parse_args()
-    args.method = "nsga_nei"
+    args.method = "nsga_no_mask"
     args.job_seq_num = 1
     args.tag = "run01"
 
@@ -640,5 +604,3 @@ if __name__ == "__main__":
         writer.add_scalar("Train/Duration fitness max", max_elite_fitness[0], ga.generation)
         writer.add_scalar("Train/Balance fitness min", min_elite_fitness[1], ga.generation)
         writer.add_scalar("Train/Duration fitness min", min_elite_fitness[0], ga.generation)
-
-        writer.add_scalar("Train/Exploration rate", ga.exploration_rate, ga.generation)

@@ -201,7 +201,7 @@ class GA:
         self.seq_index = 0
         self.seq_num = args.job_seq_num
         self.generation = 0
-    
+
     def setup_seed(self):
         seed = args.seed
         torch.manual_seed(seed)
@@ -542,7 +542,7 @@ if __name__ == "__main__":
     args = parse_args()
     args.method = "nsga"
     args.job_seq_num = 1
-    args.tag = "run04"
+    args.tag = "run01"
 
     save_dir = os.path.join(
         args.save_path,
@@ -576,7 +576,7 @@ if __name__ == "__main__":
         elite_change_num, elite_fitness_list = ga.evolve()
 
         # log to tensorbord
-        writer.add_scalar("Elite change num", elite_change_num, ga.generation)
+        writer.add_scalar("Train/Elite change num", elite_change_num, ga.generation)
 
         elite_fitness_list = np.array(elite_fitness_list)
         elite_fitness_list = -elite_fitness_list[:, -2:]
@@ -594,12 +594,12 @@ if __name__ == "__main__":
         plt.ylabel("duration")
         plt.title("Target distribution")
         plt.legend()
-        writer.add_figure("Target distribution", figure, ga.generation)
+        writer.add_figure("Train/Target distribution", figure, ga.generation)
         plt.close()
 
         max_elite_fitness = np.max(elite_fitness_list, axis=0)
         min_elite_fitness = np.min(elite_fitness_list, axis=0)
-        writer.add_scalar("Balance fitness max", max_elite_fitness[1], ga.generation)
-        writer.add_scalar("Duration fitness max", max_elite_fitness[0], ga.generation)
-        writer.add_scalar("Balance fitness min", min_elite_fitness[1], ga.generation)
-        writer.add_scalar("Duration fitness min", min_elite_fitness[0], ga.generation)
+        writer.add_scalar("Train/Balance fitness max", max_elite_fitness[1], ga.generation)
+        writer.add_scalar("Train/Duration fitness max", max_elite_fitness[0], ga.generation)
+        writer.add_scalar("Train/Balance fitness min", min_elite_fitness[1], ga.generation)
+        writer.add_scalar("Train/Duration fitness min", min_elite_fitness[0], ga.generation)
