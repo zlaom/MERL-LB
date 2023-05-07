@@ -4,9 +4,9 @@ In recent years, various companies started to shift their data services from tra
 
 ## Overview
 
-![](figs/fig1.png)
+<!-- ![](figs/fig1.png)
 
-![](figs/fig2.png)
+![](figs/fig2.png) -->
 
 ![](figs/fig3.png)
 
