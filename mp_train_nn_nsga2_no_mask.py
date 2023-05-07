@@ -116,7 +116,8 @@ class Agent(nn.Module):
             dim=-1,
         )  # B*n*dim2
 
-        action = self.job_actor.predict(job_input, action_mask)
+        # action = self.job_actor.predict(job_input, action_mask)
+        action = self.job_actor.predict(job_input)
         return action
 
     def show(self):
@@ -405,7 +406,7 @@ class GA:
         population_num = self.args.ga_parent_size + self.args.ga_children_size
         pool_num = min(cpu_count(), population_num)
         print(f"use {pool_num} cup core")
-        pool = Pool(pool_num)
+        pool = Pool(10)
 
         mutil_process = []
         for id, individual in enumerate(self.population):
@@ -540,7 +541,7 @@ class GA:
 
 if __name__ == "__main__":
     args = parse_args()
-    args.method = "nsga"
+    args.method = "nsga_no_mask"
     args.job_seq_num = 1
     args.tag = "run01"
 
