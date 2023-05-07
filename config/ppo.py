@@ -114,7 +114,7 @@ def parse_args():
 
     # ppo agent
     parser.add_argument("--observe_type", default=4, type=int)
-    parser.add_argument("--num_episodes", default=100000, type=int)
+    parser.add_argument("--num_episodes", default=200000, type=int)
     parser.add_argument("--ppo_epochs", default=5, type=int)
     parser.add_argument("--ppo_update_timestep", default=256, type=int)
     parser.add_argument("--ppo_gamma", default=0.99, type=float)

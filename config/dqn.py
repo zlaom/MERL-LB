@@ -119,7 +119,7 @@ def parse_args():
     parser.add_argument("--eps_start", default=0.6, type=float)
     parser.add_argument("--eps_end", default=0.1, type=float)
     parser.add_argument("--target_update", default=64, type=int)
-    parser.add_argument("--num_episodes", default=1000, type=int)
+    parser.add_argument("--num_episodes", default=200000, type=int)
 
     args, unknown = parser.parse_known_args()
     return args

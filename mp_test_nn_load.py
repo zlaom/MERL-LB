@@ -217,13 +217,15 @@ def test_one_path(args, seq_index, data_save_path, fig_save_path):
 
 if __name__ == "__main__":
     args = parse_args()
-
-    args.method = "wsga"
-    args.tag = "user_load_test01"
-    args.actual = False
+    args.job_seq_num = 5
+    args.method = "igd"
+    args.tag = "user_load_test02"
+    args.actual = True
     # args.checkpoint_path = "output/train/nsga/run03/elite/g1_1/20_-501.30449_-25.49838.pth"
     # args.checkpoint_path = "output/train/nsga/run05/elite/g24214_0/10_-351.04309_-20.52227.pth"
-    args.checkpoint_path = "output/train/wsga/run05/elite/g13443_3/0_-335.70133_-14.49433.pth"
+    args.checkpoint_path = (
+        "output/train/ns_deepjs/run02_no_mask/models/e13919_s9_d380.7892_b22.2165"
+    )
 
     job_num_list = range(2, 10)
     # user_sigam_list = [0]
@@ -247,6 +249,8 @@ if __name__ == "__main__":
             / args.res_capacity
             / args.machine_num
         )
+        if user_load_rate > 1.1:
+            break
         print(f"Test user_load_rate {user_load_rate:.3f}")
         save_dir = os.path.join(
             root_dir,

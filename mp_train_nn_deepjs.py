@@ -234,7 +234,7 @@ class InputDrive:
             reward.append(item[reward_index])
 
         # reward 标准化
-        norm_reward_batch = (reward - np.mean(reward, axis=0)) / (np.std(reward, axis=0))
+        # norm_reward_batch = (reward - np.mean(reward, axis=0)) / (np.std(reward, axis=0))
 
         # 归一化
         # norm_reward_batch = (reward - np.min(reward, axis=0)) / (
@@ -242,7 +242,9 @@ class InputDrive:
         # )
 
         # 目标权重相同
-        mean_reward = np.sum(norm_reward_batch, axis=-1)
+        mean_reward = np.sum(
+            np.clip(reward, a_min=[-500, -200], a_max=[0, 0]) / [-500, -200], axis=-1
+        )
         # mean_reward = norm_reward_batch[:, 0]
 
         # mean_reward = np.sum(reward, axis=-1)
@@ -303,14 +305,19 @@ class InputDrive:
 
         all_discount_reward = []
         for reward in all_reward:
-            norm_reward = (reward - reward_mean) / (reward_std + 1e-7)
-            mean_reward = np.mean(norm_reward, axis=-1)
+            # norm_reward = (reward - reward_mean) / (reward_std + 1e-7)
+            # mean_reward = np.mean(norm_reward, axis=-1)
             # mean_reward = np.sum(norm_reward * [[0.2, 0.8]], axis=-1)
             # mean_reward = np.sum(norm_reward * [[0.8, 0.2]], axis=-1)
             # mean_reward = np.sum(norm_reward * [[1, 0]], axis=-1)
             # mean_reward = np.sum(norm_reward * [[0, 1]], axis=-1)
 
             # mean_reward = np.sum(np.array(reward) * np.array([[1 / 600, 1 / 50]]), axis=-1)
+
+            mean_reward = np.sum(
+                (np.clip(reward, a_min=[-500, -200], a_max=[0, 0]) - [-500, -200]) / [500, 200],
+                axis=-1,
+            )
             reward_len = len(reward)
             discount_reward = np.zeros(reward_len)
             for index in reversed(range(reward_len - 1)):
@@ -468,7 +475,7 @@ class InputDrive:
 
 if __name__ == "__main__":
     args = parse_args()
-    args.method = "ns_deepjs"
+    args.method = "ws_deepjs"
     args.tag = "run01"
     save_dir = os.path.join(
         args.save_path,

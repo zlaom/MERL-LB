@@ -239,7 +239,7 @@ class DoubelDQN:
 if __name__ == "__main__":
     args = parse_args()
     args.method = "dqn"
-    args.tag = "run_0"
+    args.tag = "run_02"
     save_dir = os.path.join(
         args.save_path,
         args.method,

@@ -216,6 +216,7 @@ if __name__ == "__main__":
     # args.max_job_num = 2
     # args.machine_num = 20
     args.save_path = "output/test/GA/reward_mean/run01_m10/final_population_false/g_3921_f_-341.265_-0.036/24_f_-342.436_-0.029"
+    args.save_path = "/root/workspace/project/version3/output/train/ppo/run_0/model/e10000_s0_d408.3441_b16.2197_actor.pth"
     # args.save_path = "output/test/ga/reward_mean/run02_m15/final_population/g_9796_f_-310.773_-0.026/24_f_-308.432_-0.024/test_m_10"
     save_dir = args.save_path
     model_save_path = os.path.join(save_dir, "models")

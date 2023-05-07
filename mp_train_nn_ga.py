@@ -388,6 +388,8 @@ class GA:
         mutil_process = []
         for id, individual in enumerate(self.population):
             # 在坏境中运行个体获得个体适应度
+            if self.args.job_seq_num == 1 and individual.train_fitness is not None:
+                continue
             one_process = pool.apply_async(
                 run_individual_in_env,
                 args=(
@@ -452,7 +454,8 @@ class GA:
 if __name__ == "__main__":
     args = parse_args()
     args.method = "wsga"
-    args.tag = "run05"
+    args.job_seq_num = 1
+    args.tag = "run06"
     save_dir = os.path.join(
         args.save_path,
         args.method,

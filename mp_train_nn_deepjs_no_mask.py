@@ -44,8 +44,12 @@ class Actor(nn.Module):
             action = torch.argmax(predict, dim=1).cpu().item()
         else:
             action_probs = torch.softmax(predict, dim=-1)
-            action_dist = Categorical(action_probs)
-            action = action_dist.sample().cpu().item()
+            action_probs = action_probs.detach().cpu().numpy()
+            action_probs = action_probs[0]
+            action_list = list(range(len(action_probs)))
+            action = np.random.choice(action_list, p=action_probs)
+            # action_dist = Categorical(action_probs)
+            # action = action_dist.sample().cpu().item()
         return action
 
 
@@ -207,7 +211,7 @@ class InputDrive:
         agent.eval()
         with torch.no_grad():
             while not done:
-                action = agent.choose_action(obs, absolute=True)
+                action = agent.choose_action(obs, absolute=False)
                 next_obs, reward, done, _ = env.step(action)
                 trajectory.append([obs, action, reward, next_obs, done])
                 obs = next_obs
@@ -224,7 +228,7 @@ class InputDrive:
         runtime_fitness = np.mean(machines_finish_time_record)
         fitness = np.array([-runtime_fitness, -std_fitness])
 
-        return trajectory, fitness
+        return trajectory, fitness, env.curr_time
 
     # 计算折扣累积reward
     def get_discount_reward(self, trajectory, reward_index):
@@ -277,12 +281,14 @@ class InputDrive:
         all_trajectory = []
         all_fitness = []
 
+        end_time_list = []
         for record in all_record:
-            trajectory, fitness = record.get()
+            trajectory, fitness, end_time = record.get()
             all_trajectory.append(trajectory)
             all_fitness.append(fitness)
+            end_time_list.append(end_time)
 
-        return all_trajectory, all_fitness
+        return all_trajectory, all_fitness, end_time_list
 
     # 计算baseline
     def get_advantage(self, all_trajectory):
@@ -345,7 +351,7 @@ class InputDrive:
         for epoch in range(self.args.epoch):
             for seq_index in range(self.args.job_seq_num):
                 # 收集经验
-                all_trajectory, all_fitness = self.get_experience(seq_index)
+                all_trajectory, all_fitness, end_time_list = self.get_experience(seq_index)
 
                 all_obs = []
                 all_action = []
@@ -369,6 +375,10 @@ class InputDrive:
                 #     i_episode,
                 # )
                 fitness_list.append(mean_fitness)
+
+                writer.add_scalar("Train/End time max", max(end_time_list), i_episode)
+                writer.add_scalar("Train/End time min", min(end_time_list), i_episode)
+                writer.add_scalar("Train/End time mean", np.mean(end_time_list), i_episode)
 
                 # 记录fitness
                 writer.add_scalar("current/duration_score", mean_fitness[0], i_episode)
@@ -469,7 +479,7 @@ class InputDrive:
 if __name__ == "__main__":
     args = parse_args()
     args.method = "ns_deepjs"
-    args.tag = "run03_no_mask_absolute"
+    args.tag = "run04_no_mask_no_absolute"
     save_dir = os.path.join(
         args.save_path,
         args.method,

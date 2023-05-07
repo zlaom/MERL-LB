@@ -1,9 +1,11 @@
 import os
+import random
 import torch
 import numpy as np
 import pandas as pd
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.distributions import Categorical
 from itertools import count
 from multiprocessing import Pool, cpu_count
 from config.test import *
@@ -57,8 +59,9 @@ class LC:
 
 
 class Actor(nn.Module):
-    def __init__(self, dim_list=[126, 32, 1]):
+    def __init__(self, absolute=True, dim_list=[126, 32, 1]):
         super().__init__()
+        self.absolute = absolute
         self.dim_list = dim_list
         fc = []
         self.param_num = 0
@@ -90,7 +93,15 @@ class Actor(nn.Module):
         predict = self(input)
         if action_mask is not None:
             predict[action_mask == False] += -1e8
-        return torch.argmax(predict, dim=1).cpu().item()
+        if not self.absolute:
+            action_prob = torch.softmax(predict, dim=-1)
+            action_dist = Categorical(action_prob)
+            action = action_dist.sample()
+            self.action_logprobs = action_dist.log_prob(action).detach()
+            action = action.cpu().item()
+        else:
+            action = torch.argmax(predict, dim=1).cpu().item()
+        return action
 
     def show(self):
         with torch.no_grad():
@@ -99,9 +110,9 @@ class Actor(nn.Module):
 
 
 class Agent(nn.Module):
-    def __init__(self):
+    def __init__(self, absolute=True):
         super(Agent, self).__init__()
-        self.job_actor = Actor()
+        self.job_actor = Actor(absolute=absolute)
 
     def update(self, job_weights):
         self.job_actor.update(job_weights)
@@ -175,11 +186,24 @@ def get_agent(args):
         agent = LG()
     elif method == "lc":
         agent = LC()
-    elif method in ["nsga", "wsga", "deepjs"]:
+    elif method in ["nsga", "wsga", "deepjs", "igd"]:
         agent = Agent()
         state_dict = torch.load(args.checkpoint_path)
         agent.job_actor.load_state_dict(state_dict)
+    elif method in ["ppo"]:
+        agent = Agent()
+        # agent = Agent(absolute=False)
+        state_dict = torch.load(args.checkpoint_path)
+        agent.job_actor.load_state_dict(state_dict)
     return agent
+
+
+def set_seed(seed=0):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)  # 为CPU设置随机种子
+    torch.cuda.manual_seed(seed)  # 为当前GPU设置随机种子
+    torch.cuda.manual_seed_all(seed)  # 为所有GPU设置随机种子
 
 
 def test_one_path(args, seq_index, data_save_path, fig_save_path):
@@ -262,13 +286,21 @@ def test_one_path(args, seq_index, data_save_path, fig_save_path):
 
 if __name__ == "__main__":
     args = parse_args()
-    args.method = "wsga"
-    args.checkpoint_path = "output/train/deepjs/run02/models/e10001_s1_d497.6165_b14.0890"
-    args.checkpoint_path = "output/train/deepjs/run03/models/e3700_s0_d274.3077_b199.8079"
-    args.checkpoint_path = "output/train/deepjs/run01/models/e19000_s0_d386.8642_b19.4361"
-    args.checkpoint_path = "output/train/deepjs/run01/models/e19850_s0_d275.4718_b194.5685"
-    args.checkpoint_path = "output/train/wsga/run05/elite/g13443_3/24_-326.97737_-13.71405.pth"
-    args.tag = "run05"
+    args.method = "ppo"
+    # args.checkpoint_path = "output/train/deepjs/run02/models/e10001_s1_d497.6165_b14.0890"
+    # args.checkpoint_path = "output/train/deepjs/run03/models/e3700_s0_d274.3077_b199.8079"
+    # args.checkpoint_path = "output/train/deepjs/run01/models/e19000_s0_d386.8642_b19.4361"
+    # args.checkpoint_path = "output/train/deepjs/run01/models/e19850_s0_d275.4718_b194.5685"
+    # args.checkpoint_path = "output/train/wsga/run05/elite/g13443_3/24_-326.97737_-13.71405.pth"
+    # args.checkpoint_path = "/root/workspace/project/version3/output/train/ppo/run_0/model/e10001_s1_d407.9307_b16.3444_actor.pth"
+    # args.checkpoint_path = "output/train/wsga/run05/elite/g13443_3/20_-336.39251_-12.79905.pth"
+    # args.checkpoint_path = "output/train/ppo/run_0/model/e16679_s9_d376.1445_b18.8828_actor.pth"
+    # args.checkpoint_path = (
+    #     "output/train/ns_deepjs/run02_no_mask/models/e13919_s9_d380.7892_b22.2165"
+    # )
+    # args.max_time = 30 * 60
+    # args.job_seq_num = 5
+    args.tag = "best_run01"
     save_dir = os.path.join(
         args.save_path,
         args.method,
@@ -284,9 +316,12 @@ if __name__ == "__main__":
     os.makedirs(model_save_path, exist_ok=True)
     os.makedirs(fig_save_path, exist_ok=True)
 
+    set_seed()
+
     # mutil process
     mutil_process = []
-    pool = Pool(cpu_count())
+    # pool = Pool(cpu_count())
+    pool = Pool(10)
     for i in range(args.job_seq_num):
         one_process = pool.apply_async(test_one_path, args=(args, i, data_save_path, fig_save_path))
         mutil_process.append(one_process)
@@ -314,7 +349,6 @@ if __name__ == "__main__":
     print(
         "std std fitness: {:.4f} std runtime fitness: {:.4f}".format(std_fitness[0], std_fitness[1])
     )
-    print("done")
 
     result1 = [(*mean_fitness, *std_fitness)]
     df = pd.DataFrame(
@@ -326,7 +360,7 @@ if __name__ == "__main__":
             "duration_fitness_std",
         ],
     )
-    df.to_csv(os.path.join(save_dir, f"{ args.method}_mean_std.csv"))
+    df.to_csv(os.path.join(save_dir, f"mean_std.csv"))
 
     df2 = pd.DataFrame(
         fitness_record,
@@ -336,3 +370,4 @@ if __name__ == "__main__":
         ],
     )
     df2.to_csv(os.path.join(save_dir, f"all_data.csv"))
+    print("done")

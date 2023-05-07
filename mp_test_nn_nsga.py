@@ -218,11 +218,13 @@ def test_one_path(args, seq_index, data_save_path, fig_save_path):
 if __name__ == "__main__":
     args = parse_args()
 
-    args.method = "nsga"
-    args.tag = "nsga_run05_g70000"
+    args.method = "wsga"
+    args.tag = "t30_wsga_run05_g13440"
+    args.max_time = 30 * 60
+    args.job_seq_num = 5
     args.actual = True
 
-    root_path = "output/train/nsga/run05/elite/g70000_0"
+    root_path = "output/train/wsga/run05/elite/g13440_0"
     file_names = os.listdir(root_path)
     file_names.remove("mean_fitness_record.npy")
     scores = [item.split(".pth")[0] for item in file_names]
